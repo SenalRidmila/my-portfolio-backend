@@ -11,34 +11,33 @@ from PIL import Image
 from pdf2docx import Converter
 import google.generativeai as genai
 
-# --- Configuration ---
-# ⚠️ මෙතනට ඔයාගේ Google Gemini Key එක දාන්න
+
 GEMINI_API_KEY = "AIzaSyA2KRSaTVvTskd1lgI6J3WYB8dF_QwF8f8" 
 
-# Gemini Setup & Auto-Model Selection
+
 active_model = None
 
 try:
     genai.configure(api_key=GEMINI_API_KEY)
     
-    # 1. Available Models ලිස්ට් එක ගන්නවා
+
     print("🔄 Checking available models...")
     available_models = []
     for m in genai.list_models():
         if 'generateContent' in m.supported_generation_methods:
             available_models.append(m.name)
     
-    # 2. හොඳම එක තෝරගන්නවා (Priority List)
+
     target_models = ["models/gemini-1.5-flash", "models/gemini-pro", "models/gemini-1.5-pro"]
     selected_model_name = None
 
-    # අපේ ලිස්ට් එකේ තියෙන එකක් Available ද බලනවා
+
     for target in target_models:
         if target in available_models:
             selected_model_name = target
             break
     
-    # එහෙම එකක් නැත්නම්, ලිස්ට් එකේ තියෙන පළවෙනි එක ගන්නවා
+
     if not selected_model_name and available_models:
         selected_model_name = available_models[0]
 
@@ -64,14 +63,14 @@ app.add_middleware(
 os.makedirs("temp_uploads", exist_ok=True)
 os.makedirs("temp_outputs", exist_ok=True)
 
-# --- Chatbot Logic ---
+
 
 def get_ai_response(user_message):
     if not active_model:
         return "Server Error: No AI model available."
 
     try:
-        # SENAL'S UPDATED PERSONAL DATA FROM CV
+        
         prompt = f"""
         You are the AI assistant for Senal Ridmila's Personal Portfolio.
         Your goal is to answer visitor questions in a friendly, "Singlish" (Sinhala words in English) style.
@@ -98,7 +97,7 @@ def get_ai_response(user_message):
            - SLT Tire Management: Tire request system using React and Java.
            
         4. CONTACT DETAILS:
-           - Phone: +94 781304930 , +94771304930
+           - Phone: +94 781304930 , +9477 1304930
            - Email: senalridmila2@gmail.com
            - LinkedIn: linkedin.com/in/senal-ridmila-98b996292
            - GitHub: github.com/SenalRidmila
@@ -128,7 +127,7 @@ def get_ai_response(user_message):
         print(f"🔴 Gemini Error: {e}")
         return "Samawenna, podi aulak. Internet connection eka balanna."
 
-# --- API Endpoints ---
+
 
 class ChatRequest(BaseModel):
     message: str
@@ -138,7 +137,7 @@ async def chat_endpoint(request: ChatRequest):
     reply = get_ai_response(request.message)
     return {"reply": reply}
 
-# --- Tools Endpoints ---
+
 
 @app.post("/tools/img-to-pdf")
 async def img_to_pdf(file: UploadFile = File(...)):
