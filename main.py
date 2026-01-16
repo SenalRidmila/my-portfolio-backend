@@ -12,7 +12,7 @@ from pdf2docx import Converter
 import google.generativeai as genai
 
 
-GEMINI_API_KEY = "AIzaSyA2KRSaTVvTskd1lgI6J3WYB8dF_QwF8f8" 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 active_model = None
