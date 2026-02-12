@@ -1,11 +1,14 @@
 import os
 import shutil
 import warnings
+import hashlib
+from functools import lru_cache
 warnings.filterwarnings("ignore")
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from PIL import Image
 from pdf2docx import Converter
@@ -14,6 +17,9 @@ import google.generativeai as genai
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# In-memory cache for chatbot responses
+response_cache = {}
+MAX_CACHE_SIZE = 100  # Limit cache to 100 entries
 
 active_model = None
 
@@ -52,6 +58,9 @@ except Exception as e:
 
 app = FastAPI()
 
+# Add compression middleware for faster responses
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -65,9 +74,20 @@ os.makedirs("temp_outputs", exist_ok=True)
 
 
 
+def get_cache_key(message: str) -> str:
+    """Generate a cache key from the message"""
+    return hashlib.md5(message.lower().strip().encode()).hexdigest()
+
+
 def get_ai_response(user_message):
     if not active_model:
         return "Server Error: No AI model available."
+
+    # Check cache first
+    cache_key = get_cache_key(user_message)
+    if cache_key in response_cache:
+        print(f"✅ Cache hit for: {user_message[:30]}...")
+        return response_cache[cache_key]
 
     try:
         
@@ -119,13 +139,23 @@ def get_ai_response(user_message):
         response = active_model.generate_content(prompt)
         
         if response and response.text:
-            return response.text.strip()
+            reply = response.text.strip()
+            
+            # Cache the response
+            if len(response_cache) >= MAX_CACHE_SIZE:
+                # Remove oldest entry (simple FIFO)
+                response_cache.pop(next(iter(response_cache)))
+            response_cache[cache_key] = reply
+            print(f"💾 Cached response for: {user_message[:30]}...")
+            
+            return reply
         else:
             return "Samawenna, mata kiyanna deyak hithaganna ba."
 
     except Exception as e:
         print(f"🔴 Gemini Error: {e}")
         return "Samawenna, podi aulak. Internet connection eka balanna."
+
 
 
 
